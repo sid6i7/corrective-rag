@@ -1,6 +1,6 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
-from langchain_core.runnables import RunnableSequence
+from langchain.schema.runnable import RunnableSequence
 from langchain_openai import ChatOpenAI
 
 from graph.constants import DEFAULT_COMPLETIONS_MODEL
@@ -29,4 +29,4 @@ hallucination_prompt = ChatPromptTemplate.from_messages(
 )
 
 
-hallucination_grader:RunnableSequence = hallucination_prompt | structured_llm_grader
+hallucination_grader_chain:RunnableSequence = hallucination_prompt | structured_llm_grader

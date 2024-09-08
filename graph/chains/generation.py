@@ -1,6 +1,6 @@
 from langchain import hub
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnableSequence
+from langchain.schema.runnable import RunnableSequence
 from langchain_openai import ChatOpenAI
 
 from graph.constants import DEFAULT_COMPLETIONS_MODEL
