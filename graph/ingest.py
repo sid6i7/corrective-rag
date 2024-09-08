@@ -24,7 +24,7 @@ class RAGVectorStore:
         self.vector_store = Chroma(
                 collection_name=self.collection_name,
                 persist_directory=self.persist_directory,
-                embedding=OpenAIEmbeddings(),
+                embedding_function=OpenAIEmbeddings(),
             )
         self.docs: List[Document] = []
         self.text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
@@ -68,13 +68,12 @@ class RAGVectorStore:
         """
         logger.info("Creating Chroma vector store.")
         try:
-            vectorstore = Chroma.from_documents(
+            vector_store = Chroma.from_documents(
                 documents=doc_splits,
                 collection_name=self.collection_name,
                 persist_directory=self.persist_directory,
                 embedding=OpenAIEmbeddings(),
             )
-            vectorstore.persist()
             logger.info("Vector store created and persisted.")
         except Exception as e:
             logger.error(f"Failed to create vector store: {e}")
@@ -106,7 +105,6 @@ class RAGVectorStore:
         logger.info("Trying to add a new document to the vector store")
         try:
             self.vector_store.add_documents(self.load_documents(urls))
-            self.vector_store.persist()
             logger.info("Document added succesfully")
         except Exception as e:
             logger.error(f"Failed to initialize retriever: {e}")

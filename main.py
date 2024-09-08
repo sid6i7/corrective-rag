@@ -28,7 +28,9 @@ def main():
     persist_directory = args.persist_directory or DEFAULT_PERSIST_DIRECTORY
 
     if args.urls:
+        logger.info("Attempting to add urls..")
         urls = read_urls_from_file(args.urls)
+        logger.info(f"Found {len(urls)} from {args.urls}")
         vector_store = RAGVectorStore(collection_name, persist_directory)
         if not os.path.exists(persist_directory):
             documents = vector_store.load_documents(urls)
@@ -46,7 +48,7 @@ def main():
         )
         logger.info(f"Querying with question: {args.question}")
         result = app.invoke(input={"question": args.question, "retriever": retriever})
-        logger.info(result['answer'])
+        logger.info(f"Answer: {result['answer']}")
     else:
         logger.info("No question provided, URL ingestion completed.")
 
