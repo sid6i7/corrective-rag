@@ -1,59 +1,64 @@
-import logging
 from typing import List
 
 from dotenv import load_dotenv
-from langchain_core.documents import Document
+from langchain.schema import Document
+from langchain_core.vectorstores import VectorStoreRetriever
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 
+from utils import logger
+
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 class RAGVectorStore:
-    def __init__(self, urls: List[str], collection_name: str, persist_directory: str):
+    def __init__(self, collection_name: str, persist_directory: str):
         """
         Initialize the class with the URLs to fetch, the name of the vector store collection, and the directory for persistence.
         """
-        self.urls = urls
         self.collection_name = collection_name
         self.persist_directory = persist_directory
+        self.vector_store = Chroma(
+                collection_name=self.collection_name,
+                persist_directory=self.persist_directory,
+                embedding=OpenAIEmbeddings(),
+            )
         self.docs: List[Document] = []
         self.text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
             chunk_size=250, chunk_overlap=0
         )
 
-    def load_documents(self):
+    def load_documents(self, urls: List[str]):
         """
         Load web documents from the provided URLs.
         """
         try:
             logger.info("Loading documents from the web.")
-            web_responses: List[List[Document]] = [WebBaseLoader(url).load() for url in self.urls]
+            web_responses: List[List[Document]] = [WebBaseLoader(url).load() for url in urls]
             
             # Flatten the list of lists into a single list of documents
+            documents = []
             for response in web_responses:
-                self.docs.extend(response)
-                
-            logger.info(f"Loaded {len(self.docs)} documents.")
+                documents.extend(response)
+            logger.info(f"Loaded {len(documents)} documents.")
+            return documents
         except Exception as e:
             logger.error(f"Failed to load documents: {e}")
             raise
 
-    def split_documents(self):
+    def split_documents(self, documents: List[Document]):
         """
         Split the loaded documents into smaller chunks.
         """
-        if not self.docs:
-            logger.error("No documents loaded. Cannot split documents.")
-            raise ValueError("No documents to split. Make sure to load documents first.")
+        if not documents:
+            logger.error("No documents given. Cannot split documents.")
+            raise ValueError("No documents given. Cannot split documents.")
 
         logger.info("Splitting documents into chunks.")
-        doc_splits = self.text_splitter.split_documents(self.docs)
+        doc_splits = self.text_splitter.split_documents(documents)
         logger.info(f"Split documents into {len(doc_splits)} chunks.")
         return doc_splits
 
@@ -69,7 +74,7 @@ class RAGVectorStore:
                 persist_directory=self.persist_directory,
                 embedding=OpenAIEmbeddings(),
             )
-            vectorstore.persist()  # Persist the store for later use
+            vectorstore.persist()
             logger.info("Vector store created and persisted.")
         except Exception as e:
             logger.error(f"Failed to create vector store: {e}")
@@ -93,32 +98,16 @@ class RAGVectorStore:
         except Exception as e:
             logger.error(f"Failed to initialize retriever: {e}")
             raise
-
-"""Example usage:
-if __name__ == "__main__":
-    # urls = [
-    #     "https://www.prompthub.us/blog/how-to-use-system-2-attention-prompting-to-improve-llm-accuracy",
-    #     "https://www.prompthub.us/blog/enterprise-prompt-engineering-best-practices-tendencies-and-insights",
-    #     "https://www.prompthub.us/blog/least-to-most-prompting-guide",
-    #     "https://www.prompthub.us/blog/self-consistency-and-universal-self-consistency-prompting",
-    #     "https://www.prompthub.us/blog/prompt-patterns-what-they-are-and-16-you-should-know",
-    #     "https://www.prompthub.us/blog/program-of-thoughts-prompting-guide"
-    # ]
-
-    # vector_store = RAGVectorStore(
-    #     urls=urls, 
-    #     collection_name="rag-chroma", 
-    #     persist_directory="./.chroma"
-    # )
-
-    # vector_store.load_documents()
-    # doc_splits = vector_store.split_documents()
-    # vector_store.create_vectorstore(doc_splits)
-
-    # Access the retriever
-    retriever = RAGVectorStore.get_retriever(
-        collection_name="rag-chroma", 
-        persist_directory="./.chroma"
-    )
-    # Now you can use the retriever for querying the vector store.
-"""
+    
+    def add_documents(self, urls: List[str]) -> VectorStoreRetriever | None:
+        """
+        Static method to add a new document to an existing vector store
+        """
+        logger.info("Trying to add a new document to the vector store")
+        try:
+            self.vector_store.add_documents(self.load_documents(urls))
+            self.vector_store.persist()
+            logger.info("Document added succesfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize retriever: {e}")
+            raise

@@ -1,5 +1,7 @@
 from typing import List, TypedDict
 
+from graph.ingest import RAGVectorStore
+
 
 class GraphState(TypedDict):
     """
@@ -16,3 +18,4 @@ class GraphState(TypedDict):
     answer: str
     web_search: bool
     documents: List[str]
+    retriever: RAGVectorStore
