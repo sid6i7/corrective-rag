@@ -2,9 +2,11 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_openai import ChatOpenAI
 
+from graph.constants import DEFAULT_COMPLETIONS_MODEL
+
 
 llm = ChatOpenAI(
-    model="gpt-4o-mini",
+    model=DEFAULT_COMPLETIONS_MODEL,
     temperature=0
 )
 
