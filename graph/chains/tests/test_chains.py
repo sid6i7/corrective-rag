@@ -6,14 +6,16 @@ from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_core.documents import Document
 
 from graph.chains.retrieval_grader import GradeDocuments, retrieval_grader
+from graph.chains.hallucination_grader import GradeHallucination, hallucination_grader
 from graph.chains.generation import generation_chain
 from graph.ingest import RAGVectorStore
+from constants import DEFAULT_COLLECTION_NAME, DEFAULT_PERSIST_DIRECTORY
 
 
 load_dotenv()
 retriever:VectorStoreRetriever = RAGVectorStore.get_retriever(
-                                            collection_name="rag-chroma",
-                                            persist_directory="./.chroma"
+                                            collection_name=DEFAULT_COLLECTION_NAME,
+                                            persist_directory=DEFAULT_PERSIST_DIRECTORY
                                         )
 
 
@@ -46,3 +48,27 @@ def test_generation_chain() -> None:
     docs = retriever.invoke(question)
     generation = generation_chain.invoke({"context": docs, "question": question})
     pprint(generation)
+
+
+def test_hallucination_grader_answer_yes() -> None:
+    question = "prompt engineering"
+    docs = retriever.invoke(question)
+
+    answer:str = generation_chain.invoke({"context": docs, "question": question})
+    res:GradeHallucination = hallucination_grader.invoke(
+        {"documents": docs, "answer": answer}
+    )
+    assert res.binary_score == True
+
+
+def test_hallucination_grader_answer_no() -> None:
+    question = "prompt engineering"
+    docs = retriever.invoke(question)
+
+    res:GradeHallucination = hallucination_grader.invoke(
+        {
+            "documents": docs,
+            "answer": "In order to make pizza, we first need to start with the dough"
+        }
+    )
+    assert res.binary_score == False
