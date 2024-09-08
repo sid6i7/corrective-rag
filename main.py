@@ -32,12 +32,7 @@ def main():
         urls = read_urls_from_file(args.urls)
         logger.info(f"Found {len(urls)} from {args.urls}")
         vector_store = RAGVectorStore(collection_name, persist_directory)
-        if not os.path.exists(persist_directory):
-            documents = vector_store.load_documents(urls)
-            doc_splits: List[Document] = vector_store.split_documents(documents)
-            vector_store.create_vectorstore(doc_splits)
-        else:
-            vector_store.add_documents(urls)
+        vector_store.add_documents_from_urls(urls)
     
     if args.question:
         if not os.path.exists(persist_directory):
@@ -49,6 +44,7 @@ def main():
         logger.info(f"Querying with question: {args.question}")
         result = app.invoke(input={"question": args.question, "retriever": retriever})
         logger.info(f"Answer: {result['answer']}")
+        logger.info(f"Sources used:\n\n{result['documents']}")
     else:
         logger.info("No question provided, URL ingestion completed.")
 

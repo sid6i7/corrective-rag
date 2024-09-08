@@ -1,4 +1,6 @@
-from typing import List
+from typing import List, Tuple
+import concurrent.futures
+import json
 
 from dotenv import load_dotenv
 from langchain.schema import Document
@@ -9,6 +11,7 @@ from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 
 from utils import logger
+from graph.chains.keyword_extractor import keyword_extractor_chain, DocumentKeywords
 
 
 load_dotenv()
@@ -30,8 +33,29 @@ class RAGVectorStore:
         self.text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
             chunk_size=250, chunk_overlap=0
         )
+    
+    def add_additional_metadata(self, documents:List[Document]) -> Tuple[Document, List[str]]:
+        """Given a set of documents, generate relevant metadata for them."""
+        logger.info("Generating metadata for documents")
+        # Keyword extraction
+        def get_keywords(document: Document) -> Document:
+            try:
+                document_keywords: DocumentKeywords = keyword_extractor_chain.invoke(
+                    {"document": document.page_content}
+                )
+                document.metadata["keywords"] = json.dumps(document_keywords.keywords)
+            except Exception as e:
+                logger.error(f"Could not extract keywords for the document: {document.page_content}")
+            return document
+        documents_with_keywords = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [executor.submit(get_keywords, document) for document in documents]
+            for future in futures:
+                documents_with_keywords.append(future.result())
+        return documents_with_keywords
+        
 
-    def load_documents(self, urls: List[str]):
+    def load_documents(self, urls: List[str]) -> List[Document]:
         """
         Load web documents from the provided URLs.
         """
@@ -61,22 +85,19 @@ class RAGVectorStore:
         doc_splits = self.text_splitter.split_documents(documents)
         logger.info(f"Split documents into {len(doc_splits)} chunks.")
         return doc_splits
-
-    def create_vectorstore(self, doc_splits: List[Document]):
+    
+    def add_documents_from_urls(self, urls: List[str]) -> VectorStoreRetriever | None:
         """
-        Create the Chroma vector store from the split documents and embeddings.
+        Method to add new documents to an existing vector store
         """
-        logger.info("Creating Chroma vector store.")
+        logger.info("Trying to add new documents to the vector store")
         try:
-            vector_store = Chroma.from_documents(
-                documents=doc_splits,
-                collection_name=self.collection_name,
-                persist_directory=self.persist_directory,
-                embedding=OpenAIEmbeddings(),
-            )
-            logger.info("Vector store created and persisted.")
+            documents:List[Document] = self.load_documents(urls)
+            documents = self.add_additional_metadata(documents)
+            self.vector_store.add_documents(documents)
+            logger.info("Documents added succesfully")
         except Exception as e:
-            logger.error(f"Failed to create vector store: {e}")
+            logger.error(f"Failed to initialize retriever: {e}")
             raise
 
     @staticmethod
@@ -94,18 +115,6 @@ class RAGVectorStore:
             ).as_retriever()
             logger.info("Retriever initialized successfully.")
             return retriever
-        except Exception as e:
-            logger.error(f"Failed to initialize retriever: {e}")
-            raise
-    
-    def add_documents(self, urls: List[str]) -> VectorStoreRetriever | None:
-        """
-        Static method to add a new document to an existing vector store
-        """
-        logger.info("Trying to add a new document to the vector store")
-        try:
-            self.vector_store.add_documents(self.load_documents(urls))
-            logger.info("Document added succesfully")
         except Exception as e:
             logger.error(f"Failed to initialize retriever: {e}")
             raise

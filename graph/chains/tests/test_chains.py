@@ -6,7 +6,8 @@ from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_core.documents import Document
 
 from graph.chains.retrieval_grader import GradeDocuments, retrieval_grader
-from graph.chains.hallucination_grader import GradeHallucination, hallucination_grader
+from graph.chains.hallucination_grader import GradeHallucination, hallucination_grader_chain
+from graph.chains.keyword_extractor import DocumentKeywords, keyword_extractor_chain
 from graph.chains.generation import generation_chain
 from graph.ingest import RAGVectorStore
 from constants import DEFAULT_COLLECTION_NAME, DEFAULT_PERSIST_DIRECTORY
@@ -55,7 +56,7 @@ def test_hallucination_grader_answer_yes() -> None:
     docs = retriever.invoke(question)
 
     answer:str = generation_chain.invoke({"context": docs, "question": question})
-    res:GradeHallucination = hallucination_grader.invoke(
+    res:GradeHallucination = hallucination_grader_chain.invoke(
         {"documents": docs, "answer": answer}
     )
     assert res.binary_score == True
@@ -65,10 +66,22 @@ def test_hallucination_grader_answer_no() -> None:
     question = "prompt engineering"
     docs = retriever.invoke(question)
 
-    res:GradeHallucination = hallucination_grader.invoke(
+    res:GradeHallucination = hallucination_grader_chain.invoke(
         {
             "documents": docs,
             "answer": "In order to make pizza, we first need to start with the dough"
         }
     )
     assert res.binary_score == False
+
+
+def test_keyword_extractor_chain() -> None:
+    document = "Prompt engineering is the process of structuring an instruction that can be interpreted and understood by a generative AI model."
+    expected_keywords = ["prompt engineering", "process", "structuring", "instruction", "generative ai", "model"]
+    res:DocumentKeywords = keyword_extractor_chain.invoke(
+        {"document": document}
+    )
+    keywords = res.keywords
+    print(keywords)
+    matched_keywords = [keyword for keyword in keywords if keyword.lower() in expected_keywords]
+    assert len(matched_keywords) >= len(expected_keywords)//2
