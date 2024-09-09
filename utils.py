@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime
 
 from constants import LOGS_DIR
 
@@ -8,7 +9,7 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     handlers=[
-                        logging.FileHandler(os.path.join(LOGS_DIR, "app.log")),
+                        logging.FileHandler(os.path.join(LOGS_DIR, f"{datetime.now().strftime('%d-%m-%Y')}-app.log")),
                         logging.StreamHandler()
                     ])
 logger = logging.getLogger(__name__)
