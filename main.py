@@ -19,13 +19,21 @@ def main():
     
     parser.add_argument('-q', '--question', type=str, help="Input question for the RAG system")
     parser.add_argument('--urls', type=str, help="Path to text file containing URLs for ingestion")
-    parser.add_argument('--collection_name', type=str, help="Name of the vector store collection for ingestion")
-    parser.add_argument('--persist_directory', type=str, help="Path to the directory where vector store will be stored")
+    parser.add_argument(
+        '--collection_name', type=str,
+        help=f"Name of the vector store collection for ingestion. Defaults to {DEFAULT_COLLECTION_NAME}",
+        default=DEFAULT_COLLECTION_NAME
+    )
+    parser.add_argument(
+        '--persist_directory', type=str,
+        help=f"Path to the directory where vector store will be stored. Defaults to {DEFAULT_PERSIST_DIRECTORY}",
+        default=DEFAULT_PERSIST_DIRECTORY
+    )
 
     args = parser.parse_args()
     
-    collection_name = args.collection_name or DEFAULT_COLLECTION_NAME
-    persist_directory = args.persist_directory or DEFAULT_PERSIST_DIRECTORY
+    collection_name = args.collection_name
+    persist_directory = args.persist_directory
 
     if args.urls:
         logger.info("Attempting to add urls..")
