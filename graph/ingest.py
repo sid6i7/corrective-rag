@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Set
 import concurrent.futures
 import json
 
@@ -12,6 +12,7 @@ from langchain_openai import OpenAIEmbeddings
 
 from utils import logger
 from graph.chains.keyword_extractor import keyword_extractor_chain, DocumentKeywords
+from graph import utils
 
 
 load_dotenv()
@@ -33,6 +34,15 @@ class RAGVectorStore:
         self.text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
             chunk_size=250, chunk_overlap=0
         )
+
+    def get_keywords_in_vector_store(self) -> Set[str]:
+        metadata_in_db = self.vector_store.get().get("metadatas")
+        keywords = set()
+        if metadata_in_db:
+            for metadata in metadata_in_db:
+                keywords_in_doc = json.loads(metadata.get('keywords', '[]'))
+                keywords.update(keywords_in_doc)
+        return keywords
     
     def add_additional_metadata(self, documents:List[Document]) -> Tuple[Document, List[str]]:
         """Given a set of documents, generate relevant metadata for them."""
@@ -43,7 +53,8 @@ class RAGVectorStore:
                 document_keywords: DocumentKeywords = keyword_extractor_chain.invoke(
                     {"document": document.page_content}
                 )
-                document.metadata["keywords"] = json.dumps(document_keywords.keywords)
+                document_keywords = utils.preprocess_keywords(document_keywords.keywords)
+                document.metadata["keywords"] = json.dumps(list(document_keywords))
             except Exception as e:
                 logger.error(f"Could not extract keywords for the document: {document.page_content}")
             return document
@@ -92,7 +103,9 @@ class RAGVectorStore:
         """
         logger.info("Trying to add new documents to the vector store")
         try:
-            documents:List[Document] = self.load_documents(urls)
+            documents = self.load_documents(urls)
+            documents = self.split_documents(documents)
+            documents = utils.preprocess_documents(documents)
             documents = self.add_additional_metadata(documents)
             self.vector_store.add_documents(documents)
             logger.info("Documents added succesfully")
@@ -100,19 +113,14 @@ class RAGVectorStore:
             logger.error(f"Failed to initialize retriever: {e}")
             raise
 
-    @staticmethod
-    def get_retriever(collection_name: str, persist_directory: str):
+    def get_retriever(self):
         """
-        Static method to return a retriever for querying the vector store, 
+        Method to return a retriever for querying the vector store, 
         independent of the class initialization.
         """
         logger.info("Initializing retriever from the Chroma vector store.")
         try:
-            retriever = Chroma(
-                collection_name=collection_name,
-                persist_directory=persist_directory,
-                embedding_function=OpenAIEmbeddings(),
-            ).as_retriever()
+            retriever = self.vector_store.as_retriever()
             logger.info("Retriever initialized successfully.")
             return retriever
         except Exception as e:

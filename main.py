@@ -37,14 +37,13 @@ def main():
     if args.question:
         if not os.path.exists(persist_directory):
             raise ValueError("Specified vector store doesn't exist")
-        retriever = RAGVectorStore.get_retriever(
+        retriever = RAGVectorStore(
             collection_name=collection_name,
             persist_directory=persist_directory
         )
         logger.info(f"Querying with question: {args.question}")
         result = app.invoke(input={"question": args.question, "retriever": retriever})
         logger.info(f"Answer: {result['answer']}")
-        logger.info(f"Sources used:\n\n{result['documents']}")
     else:
         logger.info("No question provided, URL ingestion completed.")
 
