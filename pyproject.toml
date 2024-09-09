@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "corrective-rag"
+version = "0.1.0"
+description = ""
+authors = ["Siddhant Jain <siddhantjain209@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+beautifulsoup4 = "^4.12.3"
+langchain = "^0.2.16"
+langgraph = "^0.2.18"
+langchainhub = "^0.1.21"
+langchain-community = "^0.2.16"
+tavily-python = "^0.4.0"
+langchain-chroma = "^0.1.3"
+python-dotenv = "^1.0.1"
+pytest = "^8.3.2"
+langchain-openai = "^0.1.23"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
