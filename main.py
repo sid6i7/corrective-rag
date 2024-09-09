@@ -1,9 +1,7 @@
-from typing import List
 import argparse
 import os
 
 from dotenv import load_dotenv
-from langchain.schema import Document
 
 from utils import logger, read_urls_from_file
 from constants import DEFAULT_COLLECTION_NAME, DEFAULT_PERSIST_DIRECTORY
